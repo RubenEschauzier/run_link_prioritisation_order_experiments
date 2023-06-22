@@ -1,0 +1,18 @@
+{
+  "name": "comunica-experiment-link-prioritisation",
+  "version": "1.0.0",
+  "description": "Run some exploratory tests for link prioritisation",
+  "main": "index.js",
+  "author": "Ruben Eschauzier",
+  "license": "MIT",
+  "lsd:module": true,
+  "dependencies": {
+    "@types/lodash": "^4.14.195",
+    "@types/node": "^18.0.0",
+    "componentsjs-generator": "^3.0.1",
+    "hyperparameters": "^0.25.6",
+    "lodash": "^4.17.21",
+    "typescript": "^4.5.2"
+  },
+  "scripts": {}
+}
