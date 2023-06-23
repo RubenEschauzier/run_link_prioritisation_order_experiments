@@ -1,8 +1,6 @@
 import * as fs from 'fs';
 import * as _ from 'lodash';
-import * as hpjs from 'hyperparameters';
-import { Console } from 'console';
-// https://hyperjs.herokuapp.com/
+//https://hyperjs.herokuapp.com/
 
 class runExperiments{
     public engine: any;
@@ -15,6 +13,7 @@ class runExperiments{
     public bestFirstResultProgression: number[];
 
     public readonly nExecutions: number;
+    public progressBar: any;
     public constructor(nExecutions: number){
         this.queryEngineFactory = require("@comunica/query-sparql-link-traversal-solid-benchmark-version").QueryEngineFactory;
 
@@ -45,6 +44,14 @@ class runExperiments{
         const mean = this.getMeanArray(input);
         return Math.sqrt(input.reduce((acc, cV) => acc + Math.pow(cV - mean, 2), 0) / (input.length - 1));
 
+    }
+
+    public static factorial(n: number){
+        let fact = n;
+        for (let i = 1; i<n ; i++){
+            fact = fact * (n-i);
+        }
+        return fact;
     }
 
     public * permute(permutation: number[]) {
@@ -132,7 +139,10 @@ class runExperiments{
 
     public async iterateExperiments(fileLocation: string, query: string){
         let resultObject: IQueryTimingResults[] = [];   
+        const numExp = runExperiments.factorial(this.indexArray.length);
+        let i = 1;
         for (const combination of this.permute(this.indexArray)){
+            console.log(`Using combination: ${combination}, progress: ${i}/${numExp}`);
             const oldConfig = this.readConfigFile(fileLocation);
 
             const newOrder: string[] = this.createNewOrder(combination);
@@ -141,27 +151,32 @@ class runExperiments{
             fs.writeFileSync('configVariable/config-solid-var-priorities.json', JSON.stringify(newConfig));
             await this.createEngineFromPath('configVariable/config-solid-var-priorities.json');
             const queryExecutionTimes = [];
-            const resultArrivalTimes = [];
+            const resultArrivalTimes: number[][] = [];
             for (let i = 0; i<this.nExecutions; i++){
                 const timingResults = await this.runQuery(query)
                 queryExecutionTimes.push(timingResults.elapsed);
                 resultArrivalTimes.push(timingResults.resultArrivalTimes);
             }
 
-            const meanExecutionTime = this.getMeanArray(queryExecutionTimes);
-            const stdExecutionTime = this.getStdArray(queryExecutionTimes);
+            const meanExecutionTime = this.getMeanArray([...queryExecutionTimes]);
+            const stdExecutionTime = this.getStdArray([...queryExecutionTimes]);    
+            const transposeResultArrivalTimes = resultArrivalTimes[0].map((_, colIndex) => resultArrivalTimes.map(row => row[colIndex]));
 
-            const meanArrivalTimes = resultArrivalTimes.map(x => this.getMeanArray(x));
-            const stdArrivalTimes = resultArrivalTimes.map(x => this.getStdArray(x));
+            const meanArrivalTimes = transposeResultArrivalTimes.map(x => this.getMeanArray([...x]));
+            const stdArrivalTimes = transposeResultArrivalTimes.map(x => this.getStdArray([...x]));
+            const ansDistOutput = deficiencyMetrics.answerDistributionFunction(meanArrivalTimes, 500, false);
+            const defAtComplete = deficiencyMetrics.defAtK(meanArrivalTimes.length, ansDistOutput.answerDist, ansDistOutput.linSpace);
 
             resultObject.push(
             {priorityOrder: combination,
+            dieffAtComplete: defAtComplete,
             meanTotalExecutionTime: meanExecutionTime,
             stdTotalExecutionTime: stdExecutionTime,
             meanArrivalTimes: meanArrivalTimes,
             stdArrivalTimes: stdArrivalTimes
             });
-            fs.writeFileSync('singleQueryTimingResults/timing.json', JSON.stringify(resultObject));
+            fs.writeFileSync('singleQueryTimingResults/timing_all_combinations.json', JSON.stringify(resultObject));
+            i += 1;
             break;        
         }
     }
@@ -194,9 +209,8 @@ class runExperiments{
             const meanArrivalTimes = transposeResultArrivalTimes.map(x => this.getMeanArray([...x]));
             const stdArrivalTimes = transposeResultArrivalTimes.map(x => this.getStdArray([...x]));
             
-            const linSpace = deficiencyMetrics.getLinSpace(meanArrivalTimes[meanArrivalTimes.length-1], Math.max(meanArrivalTimes.length, 500));
-            const defAtComplete = deficiencyMetrics.defAtK(meanArrivalTimes.length, meanArrivalTimes, linSpace);
-            console.log(`Deficiency: ${defAtComplete}`);
+            const ansDistOutput = deficiencyMetrics.answerDistributionFunction(meanArrivalTimes, 500, false);
+            const defAtComplete = deficiencyMetrics.defAtK(meanArrivalTimes.length, ansDistOutput.answerDist, ansDistOutput.linSpace);
 
             if (meanArrivalTimes[0]<this.bestFirstResult){
                 this.bestFirstResult = meanArrivalTimes[0];
@@ -207,6 +221,7 @@ class runExperiments{
 
             resultObject.push(
             {priorityOrder: combination,
+            dieffAtComplete: defAtComplete,
             meanTotalExecutionTime: meanExecutionTime,
             stdTotalExecutionTime: stdExecutionTime,
             meanArrivalTimes: meanArrivalTimes,
@@ -270,7 +285,6 @@ class deficiencyMetrics{
         for (const t of linSpace){
             answerDistributionFunction.push(this.answerDistribution(t, answerTimings));
         }
-        // answerDistributionFunction.push(this.answerDistribution(answerTimings[answerTimings.length - 1], answerTimings));
 
         if (writeToFile){
             fs.writeFileSync('answerDistFunction/answerDist.txt', JSON.stringify(answerDistributionFunction));
@@ -312,6 +326,7 @@ class deficiencyMetrics{
         if (cutoffIndex==0){
             cutoffIndex = distribution.length-1;
         }
+
         const integral = this.integralSimpsonsRule(distribution.slice(0, cutoffIndex+1), linSpace.slice(0, cutoffIndex+1));
         return integral;
     }
@@ -324,7 +339,6 @@ class deficiencyMetrics{
             // not as simple as subtraction 
             let dt = linSpace[i] - linSpace[i-1];  
             integral += (distribution[i]+distribution[i-1])*dt;  // area of the trapezoid
-
         }
         integral /= 2.0;
         return integral;
@@ -342,7 +356,7 @@ const queries = [
     "}" 
 ]
 const runner = new runExperiments(15);
-runner.randomlySampleCombinations("configFiles/config-solid-variable-priorities.json", queries[0], 20);
+runner.iterateExperiments("configFiles/config-solid-variable-priorities.json", queries[0]);
 
 export interface IConfigLinkTraversal{
     "@context" : string[],
@@ -371,22 +385,11 @@ export interface ICombinationTimingResults{
 
 export interface IQueryTimingResults{
     priorityOrder: number[];
+    dieffAtComplete: number;
     meanTotalExecutionTime: number;
     stdTotalExecutionTime: number;
     meanArrivalTimes: number[];
     stdArrivalTimes: number[];
-}
-
-export interface IBayesOptInput{
-    prio0: number;
-    prio1: number;
-    prio2: number;
-    prio3: number;
-    prio4: number;
-    prio5: number;
-    prio6: number;
-    fileLocation: string;
-    query: string;
 }
 
 export interface IAnswerDistributionOutput{
