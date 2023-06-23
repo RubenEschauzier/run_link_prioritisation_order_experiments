@@ -193,6 +193,10 @@ class runExperiments{
 
             const meanArrivalTimes = transposeResultArrivalTimes.map(x => this.getMeanArray([...x]));
             const stdArrivalTimes = transposeResultArrivalTimes.map(x => this.getStdArray([...x]));
+            
+            const linSpace = deficiencyMetrics.getLinSpace(meanArrivalTimes[meanArrivalTimes.length-1], Math.max(meanArrivalTimes.length, 500));
+            const defAtComplete = deficiencyMetrics.defAtK(meanArrivalTimes.length, meanArrivalTimes, linSpace);
+            console.log(`Deficiency: ${defAtComplete}`);
 
             if (meanArrivalTimes[0]<this.bestFirstResult){
                 this.bestFirstResult = meanArrivalTimes[0];
@@ -230,8 +234,17 @@ class runExperiments{
 }
 
 class deficiencyMetrics{
+    public constructor(){
+    }
 
-    public constructor(experimentFileLocation: string){
+    public static getLinSpace(maxVal: number, granularity: number){
+        const stepSize = maxVal/granularity;
+        const linSpace = [0];
+        for (let i = 1; i<granularity; i++){
+            linSpace.push(linSpace[i-1]+stepSize);
+        }
+        linSpace.push(maxVal);
+        return linSpace
 
     }
 
@@ -252,13 +265,7 @@ class deficiencyMetrics{
     }
     
     public static answerDistributionFunction(answerTimings: number[], granularity: number, writeToFile: boolean): IAnswerDistributionOutput{
-        const stepSize = (answerTimings[answerTimings.length - 1])/granularity;
-        const linSpace = [0];
-        for (let i = 1; i<granularity; i++){
-            linSpace.push(linSpace[i-1]+stepSize);
-        }
-        linSpace.push(answerTimings[answerTimings.length-1]);
-
+        const linSpace = this.getLinSpace(answerTimings[answerTimings.length-1], granularity);
         const answerDistributionFunction: number[] = [];
         for (const t of linSpace){
             answerDistributionFunction.push(this.answerDistribution(t, answerTimings));
@@ -334,75 +341,8 @@ const queries = [
     "snvoc:title ?forumTitle. " +
     "}" 
 ]
-const arrivalTimes = [0.46871941140125273,0.48705991260067094,0.5273824707997846,0.5501881148011307,0.6007035555005131,0.6253535220021149,0.6652846873017552,0.7401582925012917,0.8018414458012557,0.8315195007999137,0.8746822207009245,0.9160726499998418,0.9859153456003696,1.024098221600434,1.0650447660009377,1.163721593201626,1.2140553682002064,1.2856001692001882,1.3408463314000982,1.4102203147012915,1.4840117196014035,1.5359069012010877,1.6465369906007254,1.739450301398756,1.8526054125017253,1.9215167199006828,2.011576807601523]
-const distOutput = deficiencyMetrics.answerDistributionFunction(arrivalTimes, 200, true);
-const integral = deficiencyMetrics.defAtK(27, distOutput.answerDist, distOutput.linSpace);
-
-const distOutputNoGran = deficiencyMetrics.answerDistributionFunction(arrivalTimes, arrivalTimes.length, false);
-const integralNoGran = deficiencyMetrics.defAtK(27, distOutputNoGran.answerDist, distOutputNoGran.linSpace);
-
-console.log(integral);
-console.log(integralNoGran);
-// console.log(integral);
-
-// async function executeOneQuery(input: IBayesOptInput){
-//     console.log(input);
-//     const newOrder = [input.prio0, input.prio1, input.prio2, input.prio3, 
-//     input.prio4, input.prio5, input.prio6].map(x=>x.toString());
-    
-//     const oldConfig = runner.readConfigFile(input.fileLocation);
-//     const newConfig = runner.setNewOrder(oldConfig, newOrder);
-//     fs.writeFileSync('configVariable/config-solid-var-priorities.json', JSON.stringify(newConfig));
-//     await runner.createEngineFromPath('configVariable/config-solid-var-priorities.json');
-//     const timingResults = await runner.runQuery(input.query)
-//     return timingResults.resultArrivalTimes[0];
-// }
-
-
-// async function bayesOptCombinations(){
-//     const space = {
-//         prio0: hpjs.choice([0,1,2,3,4,5,6]),
-//         prio1: hpjs.choice([0,1,2,3,4,5,6]),
-//         prio2: hpjs.choice([0,1,2,3,4,5,6]),
-//         prio3: hpjs.choice([0,1,2,3,4,5,6]),
-//         prio4: hpjs.choice([0,1,2,3,4,5,6]),
-//         prio5: hpjs.choice([0,1,2,3,4,5,6]),
-//         prio6: hpjs.choice([0,1,2,3,4,5,6]),
-//         fileLocation: "configFiles/config-solid-variable-priorities.json",
-//         query:     "PREFIX snvoc: <https://solidbench.linkeddatafragments.org/www.ldbc.eu/ldbc_socialnet/1.0/vocabulary/> " + 
-//         "SELECT DISTINCT ?forumId ?forumTitle WHERE { " +
-//         "?message snvoc:hasCreator <https://solidbench.linkeddatafragments.org/pods/00000006597069767117/profile/card#me>. " +
-//         "?forum snvoc:containerOf ?message; " +
-//         "snvoc:id ?forumId; " +
-//         "snvoc:title ?forumTitle. " +
-//         "}",
-//     }
-//     const trials = await hpjs.fmin(
-//         executeOneQuery, space, hpjs.search.randomSearch, 6,
-//     );
-//     console.log(trials)
-
-// }
-// bayesOptCombinations();
-
-
-// runner.iterateExperiments('configFiles/config-solid-variable-priorities.json', queries[0]);
-// runner.createEngine().then(async () => {
-//     const startTime = runner.getTimeSeconds();
-//     const outputStream = await runner.engine.queryBindings(queries[0], {"lenient": true});
-//     let numResults = 0;
-//     const timingResults: number[] = [];
-//     outputStream.on('data', () => {
-//         numResults += 1;
-//         timingResults.push(runner.getTimeSeconds() - startTime)
-//     });
-//     outputStream.on('end', () =>{
-//         const elapsed = runner.getTimeSeconds() - startTime;
-//         console.log(`Total execution time: ${elapsed}`);
-//         console.log(`Number of results: ${numResults}`);
-//         console.log(`Result arrival distribution: ${timingResults}`);
-//     });
-// })
+const runner = new runExperiments(15);
+runner.randomlySampleCombinations("configFiles/config-solid-variable-priorities.json", queries[0], 20);
 
 export interface IConfigLinkTraversal{
     "@context" : string[],
