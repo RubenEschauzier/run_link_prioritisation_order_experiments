@@ -177,7 +177,6 @@ class runExperiments{
             });
             fs.writeFileSync('singleQueryTimingResults/timing_all_combinations.json', JSON.stringify(resultObject));
             i += 1;
-            break;        
         }
     }
 
