@@ -119,7 +119,6 @@ class runExperiments{
     public async runQuery(query: string): Promise<ITimingResults>{
         const startTime = this.getTimeSeconds();
         const resultStream = await this.engine.queryBindings(query, {"lenient": true});
-
         const resultTimings: number[] = [];
         let elapsed = 0;
         const consumedStream: Promise<ITimingResults> = new Promise((resolve, reject)=>{
@@ -128,11 +127,16 @@ class runExperiments{
             });
             resultStream.on('end', () => {
                 elapsed = this.getTimeSeconds() - startTime;
+                console.log(elapsed);
                 resolve({
                     elapsed: elapsed, 
                     resultArrivalTimes: resultTimings
                 });
             })
+            resultStream.on('error', (err: Error) =>{
+                console.log(err);
+                reject(err);
+            });
         });
         return consumedStream
     }
@@ -346,16 +350,94 @@ class deficiencyMetrics{
 
 
 const queries = [
-    "PREFIX snvoc: <https://solidbench.linkeddatafragments.org/www.ldbc.eu/ldbc_socialnet/1.0/vocabulary/> " + 
-    "SELECT DISTINCT ?forumId ?forumTitle WHERE { " +
-    "?message snvoc:hasCreator <https://solidbench.linkeddatafragments.org/pods/00000006597069767117/profile/card#me>. " +
-    "?forum snvoc:containerOf ?message; " +
-    "snvoc:id ?forumId; " +
-    "snvoc:title ?forumTitle. " +
-    "}" 
+    `PREFIX snvoc: <https://solidbench.linkeddatafragments.org/www.ldbc.eu/ldbc_socialnet/1.0/vocabulary/> SELECT DISTINCT ?forumId ?forumTitle WHERE { ?message snvoc:hasCreator <https://solidbench.linkeddatafragments.org/pods/00000006597069767117/profile/card#me>. ?forum snvoc:containerOf ?message; snvoc:id ?forumId; snvoc:title ?forumTitle. }` 
 ]
+const queryTest2 = `
+PREFIX rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#>
+PREFIX rdfs: <http://www.w3.org/2000/01/rdf-schema#>
+PREFIX xsd: <http://www.w3.org/2001/XMLSchema#>
+PREFIX sn: <http://localhost:3000/www.ldbc.eu/ldbc_socialnet/1.0/data/>
+PREFIX snvoc: <http://localhost:3000/www.ldbc.eu/ldbc_socialnet/1.0/vocabulary/>
+PREFIX sntag: <http://localhost:3000/www.ldbc.eu/ldbc_socialnet/1.0/tag/>
+PREFIX foaf: <http://xmlns.com/foaf/0.1/>
+PREFIX dbpedia: <http://localhost:3000/dbpedia.org/resource/>
+PREFIX dbpedia-owl: <http://localhost:3000/dbpedia.org/ontology/>
+
+SELECT
+    ?firstName
+    ?lastName
+    ?birthday
+    ?locationIP
+    ?browserUsed
+    ?gender
+    ?creationDate
+WHERE
+{
+    ?person a snvoc:Person .
+    ?person snvoc:id ?personId .
+    ?person snvoc:firstName ?firstName .
+    ?person snvoc:lastName ?lastName .
+    ?person snvoc:gender ?gender .
+    ?person snvoc:birthday ?birthday .
+    ?person snvoc:creationDate ?creationDate .
+    ?person snvoc:locationIP ?locationIP .
+    ?person snvoc:isLocatedIn ?city .
+    ?person snvoc:browserUsed ?browserUsed .
+}
+`
+
 const runner = new runExperiments(15);
-runner.iterateExperiments("configFiles/config-solid-variable-priorities.json", queries[0]);
+runner.createEngine().then(async () =>{
+    const dirFiles = fs.readdirSync('queries');
+    for (const [i, queryFile] of dirFiles.entries()){
+        fs.writeFileSync('testNumDifferentPriorities/numPriorities.txt', JSON.stringify(0));
+        fs.writeFileSync('testNumDifferentPriorities/differentLinkTypes.txt', JSON.stringify({}));
+        fs.writeFileSync('testNumDifferentPriorities/linkQueueEvolution.txt', JSON.stringify([]));
+        console.log(fs.readFileSync('queries/'+queryFile, 'utf-8'));
+        const timingResult = await runner.runQuery(fs.readFileSync('queries/'+queryFile, 'utf-8'));
+
+        console.log(`Total elapsed ${timingResult.elapsed}`);
+        console.log(`Timing first result: ${timingResult.resultArrivalTimes[0]}`);
+        console.log(`Num results ${timingResult.resultArrivalTimes.length}`);
+        const linkQueueEntriesEvolution = JSON.parse(fs.readFileSync('testNumDifferentPriorities/linkQueueEvolution.txt', 'utf-8'));
+        fs.writeFileSync('logLinkQueue/queryDiscover'+i+'.txt', JSON.stringify(linkQueueEntriesEvolution));
+    }
+})
+// async function run_failing_experiment(){
+//     const queryEngineFactory = require("@comunica/query-sparql-link-traversal-solid-benchmark-version").QueryEngineFactory;
+//     const engine = await new queryEngineFactory().create({});
+//     const output = await engine.queryBindings(queries[0], {"lenient": true});
+//     console.log((await output.toArray()).length)
+// }
+// run_failing_experiment()
+// runner.createEngine().then(async ()=>{
+//     const stream = await runner.engine.queryBindings(queries[0], {"lenient": true});
+// });
+// console.log("HELLO?")
+// const done = completeLoading.then(async () => {
+//     const dirFiles = fs.readdirSync('queries');
+//     for (const queryFile of dirFiles){
+//         const query = fs.readFileSync('queries/'+queryFile, 'utf-8');
+//         const timingResult: Promise<ITimingResults> = runner.runQuery(query);
+//         try {
+//             await timingResult
+//         } catch (error) {
+//             console.log(`There is bigboy error uwu: ${error}`)
+//         }
+//         console.log("Test")
+
+//         // console.log(`Total elapsed ${timingResult.elapsed}`);
+//         // console.log(`Timing first result: ${timingResult.resultArrivalTimes[0]}`);
+//         // console.log(`Num results ${timingResult.resultArrivalTimes.length}`);
+//         // console.log(`Max different priorities: ${fs.readFileSync('testNumDifferentPriorities/differentLinkTypes.txt', 'utf-8')}`);
+//     }
+//     return true;
+// }).catch((err)=>{
+//     console.log(`Another bigboy error uwu: ${err}`)
+// })
+// console.log("Printing")
+// console.log(done);
+// runner.iterateExperiments("configFiles/config-solid-variable-priorities.json", queries[0]);
 
 export interface IConfigLinkTraversal{
     "@context" : string[],
