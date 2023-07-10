@@ -15,7 +15,7 @@ class runExperiments{
     public readonly nExecutions: number;
     public progressBar: any;
     public constructor(nExecutions: number){
-        this.queryEngineFactory = require("@comunica/query-sparql-link-traversal-solid-benchmark-version").QueryEngineFactory;
+        this.queryEngineFactory = require("@comunica/query-sparql-link-traversal-solid").QueryEngineFactory;
 
         this.possibleSources = [  
         "typeIndex", 
@@ -388,17 +388,23 @@ WHERE
 
 const runner = new runExperiments(15);
 runner.createEngine().then(async () =>{
-    const dirFiles = fs.readdirSync('queries');
+    const dirFiles = fs.readdirSync('queries_local');
     for (const [i, queryFile] of dirFiles.entries()){
         fs.writeFileSync('testNumDifferentPriorities/numPriorities.txt', JSON.stringify(0));
         fs.writeFileSync('testNumDifferentPriorities/differentLinkTypes.txt', JSON.stringify({}));
         fs.writeFileSync('testNumDifferentPriorities/linkQueueEvolution.txt', JSON.stringify([]));
-        console.log(fs.readFileSync('queries/'+queryFile, 'utf-8'));
-        const timingResult = await runner.runQuery(fs.readFileSync('queries/'+queryFile, 'utf-8'));
+        const query  = fs.readFileSync('queries_local/'+queryFile, 'utf-8');
+        try{
+            const timingResult = await runner.runQuery(fs.readFileSync('queries_local/'+queryFile, 'utf-8'));
+            console.log(`Total elapsed ${timingResult.elapsed}`);
+            console.log(`Timing first result: ${timingResult.resultArrivalTimes[0]}`);
+            console.log(`Num results ${timingResult.resultArrivalTimes.length}`);    
+        }
+        catch(err){
+            console.log(err);
+            console.log(`Something went wrong in query: ${queryFile}`);
+        }
 
-        console.log(`Total elapsed ${timingResult.elapsed}`);
-        console.log(`Timing first result: ${timingResult.resultArrivalTimes[0]}`);
-        console.log(`Num results ${timingResult.resultArrivalTimes.length}`);
         const linkQueueEntriesEvolution = JSON.parse(fs.readFileSync('testNumDifferentPriorities/linkQueueEvolution.txt', 'utf-8'));
         fs.writeFileSync('logLinkQueue/queryDiscover'+i+'.txt', JSON.stringify(linkQueueEntriesEvolution));
     }
