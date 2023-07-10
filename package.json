@@ -12,8 +12,8 @@
     "componentsjs-generator": "^3.0.1",
     "hyperparameters": "^0.25.6",
     "lodash": "^4.17.21",
-    "tsc": "^2.0.4",
-    "typescript": "^4.5.2"
+    "typescript": "^4.5.2",
+    "fetch-sparql-endpoint": "^3.2.1"
   },
   "scripts": {}
 }
