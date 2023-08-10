@@ -1,5 +1,7 @@
 import { SparqlEndpointFetcher } from 'fetch-sparql-endpoint';
 import * as fs from 'fs';
+import * as fsExtra from 'fs-extra'
+
 /**
  * Executes query sets against a SPARQL endpoint.
  */
@@ -67,12 +69,13 @@ export class SparqlBenchmarkRunner {
    */
   public async executeQueries(data: IBenchmarkResults, iterations: number): Promise<void> {
     for (let iteration = 0; iteration < iterations; iteration++) {
-      let queryIndex = 0;
       for (const name in this.querySets) {
+        const startTimeExecution = process.hrtime()
         const test = this.querySets[name];
         // eslint-disable-next-line @typescript-eslint/no-for-in-array
         for (const id in test) {
           this.log(`\rExecuting query ${name}:${id} for iteration ${iteration + 1}/${iterations}`);
+      
           const query = test[id];
           let count: number;
           let time: number;
@@ -84,7 +87,6 @@ export class SparqlBenchmarkRunner {
           try {
             ({ count, time, timestamps, metadata } = await this.executeQuery(query));
           } catch (error: unknown) {
-            console.log("We caught error!");
             errorObject = <Error> error;
             if ('partialOutput' in <any> errorObject) {
               ({ count, time, timestamps, metadata } = (<any>errorObject).partialOutput);
@@ -98,12 +100,20 @@ export class SparqlBenchmarkRunner {
           // After the execution or time-out of query, we add one last timestamp to the tracker. This timestamp represents the endtime of the query
           // for data processing, we repeat the last observation of link queue on this timestamp, so we can, for example, see if the link queue was empty
           // for a long time before query end
-          const hrend = process.hrtime();
-          const endTime: number = hrend[0] + hrend[1] / 1000000000;
-          this.appendToFile([endTime], 'testNumDifferentPriorities/linkQueueEvolutionTimeStamps.txt');
           const linkQueueEntriesEvolution = JSON.parse(fs.readFileSync('testNumDifferentPriorities/linkQueueEvolution.txt', 'utf-8'));
-          fs.writeFileSync('logLinkQueue/queryDiscover'+queryIndex+'.txt', JSON.stringify(linkQueueEntriesEvolution));
-  
+          fs.writeFileSync('logLinkQueue/'+name+'.txt', JSON.stringify(linkQueueEntriesEvolution));
+          const linkQueueTimeStamps = JSON.parse(fs.readFileSync('testNumDifferentPriorities/linkQueueEvolutionTimeStamps.txt', 'utf-8'));
+          fs.writeFileSync('logLinkQueue/'+name+'.timestamps.txt', JSON.stringify(linkQueueTimeStamps));
+          // const linkQueueEntriesEvolutionFull = JSON.parse(fs.readFileSync('testNumDifferentPriorities/linkQueueEvolutionFull.txt', 'utf-8'));
+          // fs.writeFileSync('logLinkQueue/'+name+'.full.txt', JSON.stringify(linkQueueEntriesEvolutionFull));
+          for (const file of fs.readdirSync('intermediateResultFiles')){
+            console.log(file)
+            fs.copyFileSync(`intermediateResultFiles/${file}`, `logLinkQueueFull/${name}.${file}.txt`);
+          }
+          fsExtra.emptyDirSync('intermediateResultFiles');
+          
+
+
 
           // Store results
           if (!data[name + id]) {
@@ -125,15 +135,15 @@ export class SparqlBenchmarkRunner {
           }
 
           // Delay if error
+          console.log(`Query execution took: ${this.countTime(startTimeExecution)}`);
           if (errorObject) {
             this.log(`\rError occurred at query ${name}:${id} for iteration ${iteration + 1}/${iterations}: ${errorObject.message}\n`);
 
             // Wait until the endpoint is properly live again
-            await this.sleep(3_000);
+            await this.sleep(10_000);
             await this.waitUntilUp();
         
           }
-          queryIndex += 1;
         }
       }
     }
@@ -147,12 +157,10 @@ export class SparqlBenchmarkRunner {
   public async executeQuery(query: string): Promise<{
     count: number; time: number; timestamps: number[]; metadata: Record<string, any>;
   }> {
-    // Own code for link queue tracking
-    // Reset the logger of the link queue
     fs.writeFileSync('testNumDifferentPriorities/numPriorities.txt', JSON.stringify(0));
     fs.writeFileSync('testNumDifferentPriorities/differentLinkTypes.txt', JSON.stringify({}));
     fs.writeFileSync('testNumDifferentPriorities/linkQueueEvolution.txt', JSON.stringify([]));
-    // End own code
+    fs.writeFileSync('testNumDifferentPriorities/linkQueueEvolutionTimeStamps.txt', JSON.stringify([]), {encoding: 'utf-8', flag: 'w'});
 
     const fetcher = new SparqlEndpointFetcher({
       additionalUrlParams: this.additionalUrlParamsRun,
@@ -169,8 +177,9 @@ export class SparqlBenchmarkRunner {
         count: number; time: number; timestamps: number[]; metadata: Record<string, any>;
       }>((resolve, reject) => {
         const hrstart = process.hrtime();
+        const startTime: number = hrstart[0] + hrstart[1] / 1000000000;
         // Write first timestamp for link queue evolution logger (this is t=0)
-        fs.writeFileSync('testNumDifferentPriorities/linkQueueEvolutionTimeStamps.txt', JSON.stringify([hrstart]));
+        console.log(`Start time: ${startTime}`)
         let count = 0;
         const timestamps: number[] = [];
         let metadata: Record<string, any> = {};
@@ -250,6 +259,8 @@ export class SparqlBenchmarkRunner {
       this.log(`\rEndpoint not available yet, waited for ${++counter} seconds...`);
     }
     this.log(`\rEndpoint available after ${counter} seconds.\n`);
+    await this.sleep(10_000);
+    fsExtra.emptyDirSync('intermediateResultFiles');
   }
 
   /**
@@ -268,14 +279,14 @@ export class SparqlBenchmarkRunner {
     return this.logger?.call(this.logger, message);
   }
 
-  public appendToList(currentList: number[][], newList: number[]){
-    return [...currentList, newList]
-  }
-  public appendToFile(newList: number[], fileLocation: string){
-    const oldList: number[][] = JSON.parse(fs.readFileSync(fileLocation, 'utf-8'));
-    const toSaveList = this.appendToList(oldList, newList);
-    fs.writeFileSync(fileLocation, JSON.stringify(toSaveList));
-  }
+  // public appendToList(currentList: number[], newList: number){
+  //   return [...currentList, newList]
+  // }
+  // public appendToFile(newList: number, fileLocation: string){
+  //   const oldList: number[] = JSON.parse(fs.readFileSync(fileLocation, 'utf-8'));
+  //   const toSaveList = this.appendToList(oldList, newList);
+  //   fs.writeFileSync(fileLocation, JSON.stringify(toSaveList));
+  // }
 
 }
 

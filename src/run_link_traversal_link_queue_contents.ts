@@ -2,20 +2,23 @@ import * as fs from 'fs';
 import * as _ from 'lodash';
 import { ISparqlBenchmarkRunnerArgs, SparqlBenchmarkRunner } from './sparql_query_runner';
 
+"To start endpoint"
+"node engines/query-sparql-link-traversal-solid/bin/http.js --max-old-space-size 8192 -c context-client-temp-testing-remove.json -t 300 --idp void -i --lenient -w 1 -l error -p 3001"
+
 function getQuerySets(queryDir: string){
     const querySets: Record<string, string[]> = {};
     const dirFiles = fs.readdirSync(queryDir);
-
+    console.log(dirFiles)
     for (const [i, queryFile] of dirFiles.entries()){
-        const query = fs.readFileSync('queries/'+queryFile, 'utf-8');
+        const query = fs.readFileSync(queryDir+'/'+queryFile, 'utf-8');
         querySets[queryFile] = [query];
     }
     return querySets;
 }
 async function main(){
-    const querySets = getQuerySets('queries');
+    const querySets = getQuerySets('queries_local');
     const optionsRunner: ISparqlBenchmarkRunnerArgs = {
-        endpoint: "http://localhost:3000/sparql", 
+        endpoint: "http://localhost:3001/sparql", 
         querySets: querySets, 
         replication: 1, 
         warmup: 0, 
