@@ -12,23 +12,24 @@ function getQuerySets(queryDir: string){
     }
     return querySets;
 }
-async function main(){
+async function main(currentQueryLinkQueueLogPath: string){
     const querySets = getQuerySets('queries');
     const optionsRunner: ISparqlBenchmarkRunnerArgs = {
-        endpoint: "http://localhost:3000/sparql", 
+        endpoint: "http://localhost:3001/sparql", 
         querySets: querySets, 
         replication: 1, 
         warmup: 0, 
         timestampsRecording: true,
         logger: console.log,
-        upQuery: "SELECT * WHERE { <https://solidbench.linkeddatafragments.org/pods/00000000000000000933/profile/card#me> a ?o } LIMIT 1"
+        upQuery: "SELECT * WHERE { <https://localhost:3000/pods/00000000000000000933/profile/card#me> a ?o } LIMIT 1"
     };
-    const SparqlQueryRunner = new SparqlBenchmarkRunner(optionsRunner)
+    const SparqlQueryRunner = new SparqlBenchmarkRunner(optionsRunner, currentQueryLinkQueueLogPath);
     const results = await SparqlQueryRunner.run();
     console.log(results)
 }
-
-main();
+// This should be equal to "logFileQueueEvolution" in engines/config-query-sparql-link-traversal/config/config-solid-default-priority.json
+const queryLogPath = "/tmp/queueAnalysis/";
+main(queryLogPath);
 
 
 export interface IConfigLinkTraversal{

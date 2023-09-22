@@ -40,6 +40,6 @@ singleQueryTimingResults/*
 answerDistFunction/*
 componentsjs-error-state.json
 
-
+/generated
 # ignore yarn.lock
 yarn.lock
