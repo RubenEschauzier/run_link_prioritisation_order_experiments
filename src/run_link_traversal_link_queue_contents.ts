@@ -28,6 +28,7 @@ async function main(currentQueryLinkQueueLogPath: string){
     console.log(results)
 }
 // This should be equal to "logFileQueueEvolution" in engines/config-query-sparql-link-traversal/config/config-solid-default-priority.json
+
 const queryLogPath = "/tmp/queueAnalysis/";
 main(queryLogPath);
 

@@ -1,0 +1,10 @@
+{
+  "name": "web-client-generator-local",
+  "private": true,
+  "dependencies": {
+    "@comunica/web-client-generator": "^1.8.0"
+  },
+  "scripts": {
+    "generate": "comunica-web-client-generator"
+  }
+}

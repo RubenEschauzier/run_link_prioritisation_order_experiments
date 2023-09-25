@@ -1,0 +1,56 @@
+{
+  "name": "@comunica/actor-rdf-metadata-extract-shapetrees",
+  "version": "0.2.0",
+  "description": "A shapetrees rdf-metadata-extract actor",
+  "lsd:module": true,
+  "main": "lib/index.js",
+  "typings": "lib/index",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/comunica/comunica.git",
+    "directory": "packages/actor-rdf-metadata-extract-shapetrees"
+  },
+  "publishConfig": {
+    "access": "public"
+  },
+  "sideEffects": false,
+  "keywords": [
+    "comunica",
+    "actor",
+    "rdf-metadata-extract",
+    "shapetrees"
+  ],
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/comunica/comunica/issues"
+  },
+  "homepage": "https://comunica.dev/",
+  "files": [
+    "components",
+    "lib/**/*.d.ts",
+    "lib/**/*.js",
+    "lib/**/*.js.map"
+  ],
+  "dependencies": {
+    "@comunica/actor-init-query": "^2.9.0",
+    "@comunica/bus-dereference-rdf": "^2.8.2",
+    "@comunica/bus-http": "^2.8.2",
+    "@comunica/bus-rdf-metadata-extract": "^2.8.2",
+    "@comunica/context-entries": "^2.8.2",
+    "@comunica/core": "^2.8.2",
+    "@shexjs/parser": "1.0.0-alpha.26",
+    "@shexjs/visitor": "1.0.0-alpha.25",
+    "@types/parse-link-header": "^2.0.1",
+    "@types/shexj": "^2.1.4",
+    "parse-link-header": "^2.0.0",
+    "querystring": "^0.2.1",
+    "rdf-store-stream": "^2.0.0",
+    "relative-to-absolute-iri": "^1.0.7",
+    "sparqlalgebrajs": "^4.2.0"
+  },
+  "scripts": {
+    "build": "npm run build:ts && npm run build:components",
+    "build:ts": "node \"../../node_modules/typescript/bin/tsc\"",
+    "build:components": "componentsjs-generator"
+  }
+}

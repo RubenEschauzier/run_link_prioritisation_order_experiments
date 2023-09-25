@@ -83,19 +83,11 @@ export class SparqlBenchmarkRunner {
           let metadata: Record<string, any>;
           let errorObject: Error | undefined;
           
-          // We clean log files of previous execution
-          const filesInLogDir: string[] = fs.readdirSync(this.currentQueryLinkQueueLogPath);
-          for (const file of filesInLogDir){
-            const fullpath = path.join(this.currentQueryLinkQueueLogPath, file);
-            // Delete previous log files from the log directory, since these logFiles should already be copied over
-            fs.unlinkSync(fullpath);
-          }
-
-          // Execute query, and catch errors
           try {
             ({ count, time, timestamps, metadata } = await this.executeQuery(query));
           } catch (error: unknown) {
             console.log("We caught error!");
+            console.log(error)
             errorObject = <Error> error;
             if ('partialOutput' in <any> errorObject) {
               ({ count, time, timestamps, metadata } = (<any>errorObject).partialOutput);
@@ -106,23 +98,6 @@ export class SparqlBenchmarkRunner {
               metadata = {};
             }
           }
-          // After the execution or time-out of query, we add one last timestamp to the tracker. This timestamp represents the endtime of the query
-          // for data processing, we repeat the last observation of link queue on this timestamp, so we can, for example, see if the link queue was empty
-          // for a long time before query end
-          const hrend = process.hrtime();
-          const endTime: number = hrend[0] + hrend[1] / 1000000000;
-          const linkQueueEntriesEvolution = JSON.parse(fs.readFileSync('testNumDifferentPriorities/linkQueueEvolution.txt', 'utf-8'));
-
-          const filesInLogDirAfterQuery: string[] = fs.readdirSync(this.currentQueryLinkQueueLogPath);
-          for (const file of filesInLogDirAfterQuery){
-            // Save query logs to experiment output directory
-            const fullpath = path.join(this.currentQueryLinkQueueLogPath, file);
-            const experimentData = fs.readFileSync(fullpath, 'utf-8');
-            const splitPath = fullpath.split(path.sep);
-            const logFileName = `${name.split('.')[0]}-${splitPath[splitPath.length-1]}`;
-            const logFileSavePath = path.join(__dirname, "..", "outputExperiment", logFileName);
-            fs.writeFileSync(logFileSavePath, experimentData);
-          }  
 
           // Store results
           if (!data[name + id]) {
@@ -156,6 +131,35 @@ export class SparqlBenchmarkRunner {
         }
       }
     }
+    // Copy log files from engine to output of experiment
+    const filesInLogDirAfterQuery: string[] = fs.readdirSync(this.currentQueryLinkQueueLogPath);
+    console.log(filesInLogDirAfterQuery);
+    const queryNames = [];
+    for (const queryName in this.querySets){
+      queryNames.push(queryName)
+    }
+    console.log(queryNames)
+    let query = 0;
+    for (const file of filesInLogDirAfterQuery){
+      const fullpath = path.join(this.currentQueryLinkQueueLogPath, file);
+      if (fs.lstatSync(fullpath).isDirectory() && query>0){
+        for (const logfile of fs.readdirSync(fullpath).sort((a, b) => a.localeCompare(b, undefined, { numeric: true }))){
+          const fullPathLog = path.join(fullpath, logfile);
+          const results = JSON.parse(fs.readFileSync(fullPathLog, 'utf-8'));
+          if (results["linkQueueContent"].length == 7){
+            query += -1
+            continue;
+          }
+          console.log(results["linkQueueContent"].length)
+          // fs.copyFileSync(fullPathLog, path.join(__dirname, "..", "outputExperiment", `${queryNames[query]}-queueLogfile.txt`));
+        }
+      }
+      // We remove the log files after copying, to keep a clean slate for next experiments.
+      // fs.rmSync(fullpath, { recursive: true, force: true });
+      query+=1;
+    }  
+    // Write new 0 queryNum file to reset for next execution
+    // fs.writeFileSync(path.join(this.currentQueryLinkQueueLogPath, "queryNum.txt"), JSON.stringify(0));
     this.log(`\rExecuted all queries\n`);
   }
 
@@ -176,8 +180,8 @@ export class SparqlBenchmarkRunner {
         timeoutHandle = <any> setTimeout(() => reject(new Error('Timeout for running query')), this.timeout);
       });
     }
-    const filesInLogDir: string[] = fs.readdirSync(this.currentQueryLinkQueueLogPath);
-    if (filesInLogDir.length>0) throw new Error("Found files in log dir while query is starting.");
+    // const filesInLogDir: string[] = fs.readdirSync(this.currentQueryLinkQueueLogPath);
+    // if (filesInLogDir.length>0) throw new Error("Found files in log dir while query is starting.");
 
     const promiseFetch = fetcher.fetchBindings(this.endpoint, query)
       .then((results: any) => new Promise<{

@@ -1,0 +1,84 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta name="viewport" content="width=device-width"/>
+    <meta charSet="utf-8"/>
+    <title>Comunica – Link Traversal Configurations</title>
+    <style type="text/css">
+        body, html {
+            font-family: -apple-system,BlinkMacSystemFont,Segoe UI,Roboto,Oxygen,Ubuntu,Cantarell,Fira Sans,Droid Sans,Helvetica Neue,sans-serif;
+        }
+        a {
+            color: #740008;
+            text-decoration: none;
+        }
+        a:active,
+        a:focus,
+        a:hover {
+            text-decoration:underline
+        }
+    </style>
+</head>
+<body>
+    <div>
+        <h3>Default</h3>
+        <a href="default/" target="_parent">Web client</a><br /><br />
+        Default configuration with all available Link Traversal features.
+    </div>
+    <div>
+        <h3>Default Solid</h3>
+        <a href="solid-default/" target="_parent">Web client</a><br /><br />
+        Default configuration with Link Traversal features specific to traversing over one or multiple Solid data pods.
+    </div>
+    <div>
+        <h3>Default Solid (Adaptive)</h3>
+        <a href="solid-default/" target="_parent">Web client</a><br /><br />
+        Default configuration with Link Traversal features specific to traversing over one or multiple Solid data pods, using adaptive query optimization.
+    </div>
+    <div>
+        <h3>Solid Single pod</h3>
+        <a href="solid-single-pod/" target="_parent">Web client</a><br /><br />
+        Configuration with Link Traversal features specific to traversing within a single Solid data pods.
+    </div>
+    <div>
+        <h3>Solid Source Provenance</h3>
+        <a href="solid-prov-sources/" target="_parent">Web client</a><br /><br />
+        Configuration with Link Traversal features enabling GRAPH-based origin document annotation when traversing over Solid data pods.
+    </div>
+    <div>
+        <h3>Solid Shapetrees</h3>
+        <a href="solid-shapetrees/" target="_parent">Web client</a><br /><br />
+        Configuration with Link Traversal features specific to Solid (data pods) with <a href="https://shapetrees.org/">Shape Trees</a>.
+    </div>
+    <div>
+        <h3>Follow All</h3>
+        <a href="follow-all/" target="_parent">Web client</a><br /><br />
+        Configuration that implements the <code>cAll</code> reachability semantics, and follows all possible links.
+    </div>
+    <div>
+        <h3>Follow Match Query</h3>
+        <a href="follow-match-query/" target="_parent">Web client</a><br /><br />
+        Configuration that implements the <code>cMatch</code> reachability semantics, and follows links in triples that match at least triple pattern in the query.
+    </div>
+    <div>
+        <h3>Follow Match Pattern Bound</h3>
+        <a href="follow-match-pattern-bound/" target="_parent">Web client</a><br /><br />
+        Configuration that implements the <code>cMatchPatternBound</code> reachability semantics, and follows links in triples that match the current triple pattern leaf in the adaptive query plan.
+    </div>
+    <div>
+        <h3>Follow Content Policies (Restrictive)</h3>
+        <a href="follow-content-policies-restrictive/" target="_parent">Web client</a><br /><br />
+        Configuration that extracts <code>SCL</code> policies, and only follows links matching those policies.
+    </div>
+    <div>
+        <h3>Follow Content Policies (Conditional)</h3>
+        <a href="follow-content-policies-conditional/" target="_parent">Web client</a><br /><br />
+        Configuration that extracts <code>SCL</code> policies, follows links according to the <code>cMatch</code> reachability semantics, but only allows links to be followed if they also match at least one <code>SCL</code> policy.
+    </div>
+
+    <div>
+        <h3>TREE</h3>
+        <a href="tree/" target="_parent">Web client</a><br /><br />
+        Configuration that follow all the relations in a TREE document.
+    </div>
+</body>
